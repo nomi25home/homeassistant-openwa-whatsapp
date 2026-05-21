@@ -33,12 +33,7 @@ You also need:
 
 ## Deploying OpenWA
 
-This integration is based on [OpenWA](https://www.open-wa.org/), a high-performance WhatsApp API.
-
-> [!NOTE]
-> The **HACS integration** is stable and ready for use. The **Home Assistant Add-on** is currently a **Work in Progress (WIP)** and is provided for convenience. If you encounter issues with the add-on, we recommend deploying OpenWA via standard Docker.
-
-If you don't have a server running, you can deploy it using Docker.
+This integration is based on [OpenWA](https://www.open-wa.org/), a high-performance WhatsApp API. If you don't have a server running, you can deploy it using Docker.
 
 ### Quick Start with Docker
 
