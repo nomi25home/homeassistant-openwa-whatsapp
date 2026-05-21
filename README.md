@@ -307,28 +307,59 @@ Some Home Assistant UI editors may not preserve `!secret` values cleanly inside 
 
 ## Recommended wrapper scripts
 
+To avoid repeating phone numbers in every automation and to keep your secrets secure, it is highly recommended to create wrapper scripts in `scripts.yaml`.
+
+### 1. Define secrets
+In `secrets.yaml`:
 ```yaml
-whatsapp_primary:
-  alias: WhatsApp Primary
+openwa_my_phone: "15551234567@c.us"
+openwa_partner_phone: "15557654321@c.us"
+```
+
+### 2. Create the scripts
+In `scripts.yaml`:
+```yaml
+whatsapp_me:
+  alias: "WhatsApp Me"
   mode: single
   fields:
     message:
-      description: Message to send
-      example: "Garage door opened"
+      description: "Message text to send"
+      example: "Front door opened"
   sequence:
     - action: openwa_whatsapp.send_message
       data:
-        chat_id: !secret openwa_primary_recipient
+        chat_id: !secret openwa_my_phone
+        message: "{{ message }}"
+
+whatsapp_partner:
+  alias: "WhatsApp Partner"
+  mode: single
+  fields:
+    message:
+      description: "Message text to send"
+      example: "I'm heading home now"
+  sequence:
+    - action: openwa_whatsapp.send_message
+      data:
+        chat_id: !secret openwa_partner_phone
         message: "{{ message }}"
 ```
 
-Then automations can use:
+### 3. Use in automations
+Now you can call these scripts from any automation. This keeps your automations clean and makes it easy to change recipients in the future.
 
 ```yaml
+alias: "WhatsApp Light Notification"
+triggers:
+  - trigger: state
+    entity_id: light.family_room_dimmer
+    to: "on"
 actions:
-  - action: script.whatsapp_primary
+  - action: script.whatsapp_me
     data:
-      message: "Garage door opened"
+      message: "Family Room Light turned ON!"
+mode: single
 ```
 
 ## Troubleshooting
