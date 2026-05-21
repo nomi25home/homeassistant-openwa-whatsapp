@@ -31,6 +31,47 @@ You also need:
 - An OpenWA session ID.
 - A ready/authenticated WhatsApp session in OpenWA.
 
+## Deploying OpenWA
+
+This integration is based on [OpenWA](https://www.open-wa.org/), a high-performance WhatsApp API. If you don't have a server running, you can deploy it using Docker.
+
+### Quick Start with Docker
+
+Run the following command to start an OpenWA instance:
+
+```bash
+docker run -d \
+  --name openwa \
+  --restart unless-stopped \
+  -p 2785:2785 \
+  --shm-size=1g \
+  -v /opt/openwa/data:/app/data \
+  -e NODE_ENV=production \
+  -e PORT=2785 \
+  -e LOG_LEVEL=info \
+  -e DATABASE_TYPE=sqlite \
+  -e DATABASE_NAME=/app/data/openwa.sqlite \
+  -e DATABASE_SYNCHRONIZE=false \
+  -e ENGINE_TYPE=whatsapp-web.js \
+  -e SESSION_DATA_PATH=/app/data/sessions \
+  -e PUPPETEER_HEADLESS=true \
+  -e PUPPETEER_ARGS="--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu" \
+  -e STORAGE_TYPE=local \
+  -e STORAGE_LOCAL_PATH=/app/data/media \
+  -e REDIS_ENABLED=false \
+  -e WEBHOOK_TIMEOUT=10000 \
+  -e WEBHOOK_MAX_RETRIES=3 \
+  -e WEBHOOK_RETRY_DELAY=5000 \
+  -e RATE_LIMIT_TTL=60 \
+  -e RATE_LIMIT_MAX=100 \
+  -e PLUGINS_ENABLED=true \
+  -e PLUGINS_DIR=/app/data/plugins \
+  -e API_MASTER_KEY="your_secret_api_key" \
+  ghcr.io/rmyndharis/openwa:latest
+```
+
+**Note:** Replace `your_secret_api_key` with a strong key of your choice. This key is what you will enter as the **OpenWA API Key** during the Home Assistant setup.
+
 ## OpenWA API endpoint used
 
 This integration sends messages using:
