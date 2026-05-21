@@ -1,5 +1,8 @@
 # OpenWA WhatsApp for Home Assistant
 
+> [!WARNING]
+> **Work in Progress:** This project is currently in active development. While the core features are working, you may encounter bugs or breaking changes as new updates are released.
+
 A Home Assistant custom integration for sending WhatsApp messages through a self-hosted OpenWA API instance.
 
 This integration lets you send WhatsApp messages from Home Assistant automations, scripts, scenes, and Developer Tools using your own OpenWA server.
