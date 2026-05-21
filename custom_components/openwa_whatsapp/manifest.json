@@ -1,0 +1,12 @@
+{
+  "domain": "openwa_whatsapp",
+  "name": "OpenWA WhatsApp",
+  "codeowners": ["@nomi25home"],
+  "config_flow": true,
+  "documentation": "https://github.com/YOUR_GITHUB_USERNAME/homeassistant-openwa-whatsapp",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/YOUR_GITHUB_USERNAME/homeassistant-openwa-whatsapp/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

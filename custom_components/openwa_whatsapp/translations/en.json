@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OpenWA WhatsApp",
+        "description": "Connect Home Assistant to your self-hosted OpenWA API.",
+        "data": {
+          "base_url": "OpenWA base URL",
+          "api_key": "OpenWA API key",
+          "session_id": "OpenWA session ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to OpenWA. Check the base URL and make sure OpenWA is running.",
+      "invalid_auth": "Invalid OpenWA API key.",
+      "timeout": "Connection to OpenWA timed out.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This OpenWA session is already configured."
+    }
+  }
+}
