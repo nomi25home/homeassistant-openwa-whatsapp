@@ -90,11 +90,41 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_openwa_request(
+    hass: HomeAssistant,
+    url: str,
+    api_key: str,
+    json_data: dict[str, Any] | None = None,
+) -> tuple[int, str]:
+    """Perform an asynchronous POST request to the OpenWA API."""
+    session = async_get_clientsession(hass)
+
+    try:
+        async with session.post(
+            url,
+            headers={
+                "X-API-Key": api_key,
+                "Content-Type": "application/json",
+            },
+            json=json_data,
+            timeout=30,
+        ) as response:
+            response_text = await response.text()
+            return response.status, response_text
+
+    except TimeoutError as err:
+        raise HomeAssistantError("OpenWA request timed out") from err
+    except HomeAssistantError:
+        raise
+    except Exception as err:  # noqa: BLE001
+        raise HomeAssistantError(f"OpenWA request failed: {err}") from err
+
+
 def _build_send_message_handler(hass: HomeAssistant):
     """Create the OpenWA send message service handler."""
 
     async def async_send_message(call: ServiceCall) -> None:
-        """Send a WhatsApp message through OpenWA."""
+        """Send a WhatsApp message through OpenWA with auto-restart."""
         entry_id = call.data.get(ATTR_ENTRY_ID)
 
         if entry_id:
@@ -108,52 +138,34 @@ def _build_send_message_handler(hass: HomeAssistant):
 
         chat_id = call.data[ATTR_CHAT_ID]
         message = call.data[ATTR_MESSAGE]
-
         base_url = config[CONF_BASE_URL]
         api_key = config[CONF_API_KEY]
         session_id = config[CONF_SESSION_ID]
 
         url = f"{base_url}{API_SEND_TEXT_PATH.format(session_id=session_id)}"
+        payload = {"chatId": chat_id, "text": message}
 
-        session = async_get_clientsession(hass)
+        status, response_text = await _async_openwa_request(hass, url, api_key, payload)
 
-        try:
-            async with session.post(
-                url,
-                headers={
-                    "X-API-Key": api_key,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "chatId": chat_id,
-                    "text": message,
-                },
-                timeout=30,
-            ) as response:
-                response_text = await response.text()
+        if status < 200 or status >= 300:
+            if status == 400 and "is not active. Start the session first" in response_text:
+                _LOGGER.warning("OpenWA session is disconnected, attempting to restart...")
 
-                if response.status < 200 or response.status >= 300:
-                    _LOGGER.error(
-                        "OpenWA send_message failed. Status: %s. Response: %s",
-                        response.status,
-                        response_text,
-                    )
-                    raise HomeAssistantError(
-                        f"OpenWA send_message failed with status {response.status}: {response_text}"
-                    )
+                start_url = f"{base_url}{API_START_SESSION_PATH.format(session_id=session_id)}"
+                start_status, start_response = await _async_openwa_request(hass, start_url, api_key)
 
-                _LOGGER.debug(
-                    "OpenWA message sent successfully. Status: %s. Response: %s",
-                    response.status,
-                    response_text,
-                )
+                if start_status < 200 or start_status >= 300:
+                    _LOGGER.error("OpenWA session restart failed. Status: %s. Response: %s", start_status, start_response)
+                    raise HomeAssistantError(f"OpenWA session restart failed: {start_response}")
 
-        except TimeoutError as err:
-            raise HomeAssistantError("OpenWA request timed out") from err
-        except HomeAssistantError:
-            raise
-        except Exception as err:  # noqa: BLE001
-            raise HomeAssistantError(f"OpenWA request failed: {err}") from err
+                _LOGGER.debug("OpenWA session restarted. Retrying message send...")
+                status, response_text = await _async_openwa_request(hass, url, api_key, payload)
+
+            if status < 200 or status >= 300:
+                _LOGGER.error("OpenWA send_message failed. Status: %s. Response: %s", status, response_text)
+                raise HomeAssistantError(f"OpenWA send_message failed with status {status}: {response_text}")
+
+        _LOGGER.debug("OpenWA message sent successfully. Status: %s. Response: %s", status, response_text)
 
     return async_send_message
 
@@ -178,42 +190,13 @@ def _build_start_session_handler(hass: HomeAssistant):
         session_id = config[CONF_SESSION_ID]
 
         url = f"{base_url}{API_START_SESSION_PATH.format(session_id=session_id)}"
+        status, response_text = await _async_openwa_request(hass, url, api_key)
 
-        session = async_get_clientsession(hass)
+        if status < 200 or status >= 300:
+            _LOGGER.error("OpenWA start_session failed. Status: %s. Response: %s", status, response_text)
+            raise HomeAssistantError(f"OpenWA start_session failed with status {status}: {response_text}")
 
-        try:
-            async with session.post(
-                url,
-                headers={
-                    "X-API-Key": api_key,
-                    "Content-Type": "application/json",
-                },
-                timeout=30,
-            ) as response:
-                response_text = await response.text()
-
-                if response.status < 200 or response.status >= 300:
-                    _LOGGER.error(
-                        "OpenWA start_session failed. Status: %s. Response: %s",
-                        response.status,
-                        response_text,
-                    )
-                    raise HomeAssistantError(
-                        f"OpenWA start_session failed with status {response.status}: {response_text}"
-                    )
-
-                _LOGGER.debug(
-                    "OpenWA session started successfully. Status: %s. Response: %s",
-                    response.status,
-                    response_text,
-                )
-
-        except TimeoutError as err:
-            raise HomeAssistantError("OpenWA request timed out") from err
-        except HomeAssistantError:
-            raise
-        except Exception as err:  # noqa: BLE001
-            raise HomeAssistantError(f"OpenWA request failed: {err}") from err
+        _LOGGER.debug("OpenWA session started successfully. Status: %s. Response: %s", status, response_text)
 
     return async_start_session
 
