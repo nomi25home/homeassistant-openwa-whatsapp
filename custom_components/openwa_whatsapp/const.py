@@ -7,6 +7,7 @@ CONF_API_KEY = "api_key"
 CONF_SESSION_ID = "session_id"
 
 SERVICE_SEND_MESSAGE = "send_message"
+SERVICE_START_SESSION = "start_session"
 
 ATTR_CHAT_ID = "chat_id"
 ATTR_MESSAGE = "message"
@@ -16,4 +17,5 @@ DEFAULT_NAME = "OpenWA WhatsApp"
 
 API_HEALTH_PATH = "/api/health"
 API_SESSIONS_PATH = "/api/sessions"
+API_START_SESSION_PATH = "/api/sessions/{session_id}/start"
 API_SEND_TEXT_PATH = "/api/sessions/{session_id}/messages/send-text"
