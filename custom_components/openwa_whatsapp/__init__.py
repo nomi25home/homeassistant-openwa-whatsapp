@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -99,25 +100,44 @@ async def _async_openwa_request(
     """Perform an asynchronous POST request to the OpenWA API."""
     session = async_get_clientsession(hass)
 
-    try:
-        async with session.post(
-            url,
-            headers={
-                "X-API-Key": api_key,
-                "Content-Type": "application/json",
-            },
-            json=json_data,
-            timeout=30,
-        ) as response:
-            response_text = await response.text()
-            return response.status, response_text
+    for attempt in range(2):
+        try:
+            async with session.post(
+                url,
+                headers={
+                    "X-API-Key": api_key,
+                    "Content-Type": "application/json",
+                },
+                json=json_data,
+                timeout=30,
+            ) as response:
+                status = response.status
+                response_text = await response.text()
 
-    except TimeoutError as err:
-        raise HomeAssistantError("OpenWA request timed out") from err
-    except HomeAssistantError:
-        raise
-    except Exception as err:  # noqa: BLE001
-        raise HomeAssistantError(f"OpenWA request failed: {err}") from err
+                if status in (500, 502, 503, 504) and attempt == 0:
+                    _LOGGER.warning("OpenWA server returned a transient error (%s), retrying in 2 seconds...", status)
+                    await asyncio.sleep(2)
+                    continue
+
+                return status, response_text
+
+        except TimeoutError as err:
+            if attempt == 0:
+                _LOGGER.warning("OpenWA request timed out, retrying in 2 seconds...")
+                await asyncio.sleep(2)
+                continue
+            raise HomeAssistantError("OpenWA request timed out") from err
+        except HomeAssistantError:
+            raise
+        except Exception as err:  # noqa: BLE001
+            if attempt == 0:
+                _LOGGER.warning("OpenWA request failed (%s), retrying in 2 seconds...", err)
+                await asyncio.sleep(2)
+                continue
+            raise HomeAssistantError(f"OpenWA request failed: {err}") from err
+
+    # Fallback if loop finishes without returning (shouldn't happen with the logic above, but for safety)
+    raise HomeAssistantError("OpenWA request failed after multiple attempts")
 
 
 def _build_send_message_handler(hass: HomeAssistant):
